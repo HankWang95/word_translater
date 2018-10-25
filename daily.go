@@ -1,4 +1,4 @@
-package notebook
+package main
 
 import (
 	"github.com/HankWang95/Kanna/server"

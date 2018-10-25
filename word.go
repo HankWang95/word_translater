@@ -1,4 +1,4 @@
-package notebook
+package main
 
 import (
 	"bytes"
@@ -16,20 +16,26 @@ import (
 	"runtime"
 	"time"
 	"path"
+	"github.com/smartwalle/dbs"
+)
+
+const (
+	MaxIdleConns        = 100
+	MaxIdleConnsPerHost = 100
 )
 
 var (
 	httpClient          *http.Client
 	logger              *log.Logger
 	key                 string
-	MaxIdleConns        = 100
-	MaxIdleConnsPerHost = 100
+	db dbs.DB
 	projectPath = path.Join(os.Getenv("HOME"), "Documents", "Kanna")
 	configPath = path.Join(projectPath, "config")
 	speechPath = path.Join(projectPath, "speech")
 )
 
 func init() {
+	// 生成文件及目录
 	_, err := os.Stat(projectPath)
 	if err != nil {
 		err := os.Mkdir(projectPath, os.ModeDir | 0777)
@@ -41,17 +47,42 @@ func init() {
 			os.Mkdir(speechPath, os.ModeDir | 0777)
 		}
 	}
+	// 读取config
 	var config = ini4go.New(false)
 	config.SetUniqueOption(true)
 	config.Load(configPath)
-	httpClient = createHTTPClient()
-	logFile, err := os.OpenFile(path.Join(projectPath, "kanna.log"), os.O_WRONLY|os.O_TRUNC|os.O_CREATE, 0666)
+
+	// 读取key
 	key = config.GetValue("youdao", "key")
+
+	// 初始化mysql
+	db, err = dbs.NewSQL(config.GetValue("sql", "driver"),
+		config.GetValue("sql", "url"),
+		config.MustInt("sql", "max_open", 10),
+		config.MustInt("sql", "max_idle", 5))
+	if err != nil {
+		panic(err)
+	}
+
+	// 初始化log文件
+	logFile, err := os.OpenFile(path.Join(projectPath, "kanna.log"), os.O_WRONLY | os.O_CREATE, 0666)
 	if err != nil {
 		logger.Fatal(err)
 	}
-	logger = log.New(logFile, "[kanna-notebook] ", log.Ltime|log.Ldate|log.Lshortfile)
+	logger = log.New(logFile, "[word_translator] ", log.Ltime|log.Ldate|log.Lshortfile)
+
+	// 初始化client
+	httpClient = createHTTPClient()
+
 }
+
+
+
+
+func GetMySQLSession() dbs.DB {
+	return db
+}
+
 
 // ———————————————————————————————————————————— Loader -----------------------------------------------------
 

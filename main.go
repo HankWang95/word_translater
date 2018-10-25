@@ -3,16 +3,13 @@ package main
 import (
 	"bufio"
 	"fmt"
-	"github.com/HankWang95/Kanna/load"
-	"github.com/HankWang95/Kanna/server"
 	"log"
 	"os"
 	"strings"
 )
 
 func main() {
-	server.InitMySQL()
-	flagDict := load.NewLoaders()
+	flagDict := NewLoaders()
 	go scan(flagDict)
 	select {}
 }
@@ -30,7 +27,3 @@ func scan(flagDict map[string]*chan string) {
 		}
 	}
 }
-
-// todo 非对称加密
-//func chackKeyForHeaven()  {
-//}
