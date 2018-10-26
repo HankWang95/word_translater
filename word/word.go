@@ -1,11 +1,11 @@
-package main
+package word
 
 import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/HankWang95/Kanna/server"
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/smartwalle/dbs"
 	"github.com/smartwalle/ini4go"
 	"io"
 	"log"
@@ -13,10 +13,9 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"path"
 	"runtime"
 	"time"
-	"path"
-	"github.com/smartwalle/dbs"
 )
 
 const (
@@ -25,26 +24,26 @@ const (
 )
 
 var (
-	httpClient          *http.Client
-	logger              *log.Logger
-	key                 string
-	db dbs.DB
+	httpClient  *http.Client
+	logger      *log.Logger
+	key         string
+	db          dbs.DB
 	projectPath = path.Join(os.Getenv("HOME"), "Documents", "Kanna")
-	configPath = path.Join(projectPath, "config")
-	speechPath = path.Join(projectPath, "speech")
+	configPath  = path.Join(projectPath, "config")
+	speechPath  = path.Join(projectPath, "speech")
 )
 
 func init() {
 	// 生成文件及目录
 	_, err := os.Stat(projectPath)
 	if err != nil {
-		err := os.Mkdir(projectPath, os.ModeDir | 0777)
+		err := os.Mkdir(projectPath, os.ModeDir|0777)
 		if err != nil {
 			logger.Fatal(err)
 		}
 		_, err = os.Stat(speechPath)
 		if err != nil {
-			os.Mkdir(speechPath, os.ModeDir | 0777)
+			os.Mkdir(speechPath, os.ModeDir|0777)
 		}
 	}
 	// 读取config
@@ -65,7 +64,7 @@ func init() {
 	}
 
 	// 初始化log文件
-	logFile, err := os.OpenFile(path.Join(projectPath, "kanna.log"), os.O_WRONLY | os.O_CREATE, 0666)
+	logFile, err := os.OpenFile(path.Join(projectPath, "kanna.log"), os.O_WRONLY|os.O_CREATE, 0666)
 	if err != nil {
 		logger.Fatal(err)
 	}
@@ -76,19 +75,14 @@ func init() {
 
 }
 
-
-
-
 func GetMySQLSession() dbs.DB {
 	return db
 }
-
 
 // ———————————————————————————————————————————— Loader -----------------------------------------------------
 
 var queryWordChan = make(chan string, 10)
 var wordListChan = make(chan string, 10)
-
 
 type wordLoader struct{}
 
@@ -96,7 +90,7 @@ func queryWordEnter(word string) {
 	w, err := queryWord(word)
 	if err != nil {
 		logger.Println(err)
-	}else{
+	} else {
 		w.FormatTranslations()
 	}
 }
@@ -119,7 +113,7 @@ func flagHandler() {
 		select {
 		case word := <-queryWordChan:
 			queryWordEnter(word)
-		case n:=<-wordListChan:
+		case n := <-wordListChan:
 			wordListEnter(n)
 		}
 	}
@@ -156,7 +150,7 @@ func (w *word) FormatTranslations() {
 			fmt.Println("其他释义: ", v.([]interface{}))
 		}
 		if v, ok := basic["us-speech"]; ok {
-			f, err := os.Open(fmt.Sprint(speechPath + "/", w.Word, ".mp3"))
+			f, err := os.Open(fmt.Sprint(speechPath+"/", w.Word, ".mp3"))
 			if err == nil {
 				playMP3(f.Name())
 				return
@@ -172,7 +166,7 @@ func (w *word) FormatWordList() {
 	var fi interface{}
 	json.Unmarshal([]byte(w.Translations), &fi)
 	f := fi.(map[string]interface{})
-	fmt.Print("---- ",w.Word, " -- ")
+	fmt.Print("---- ", w.Word, " -- ")
 	if v, ok := f["translation"]; ok {
 		fmt.Println(v.([]interface{})[0], "----")
 	}
@@ -205,7 +199,6 @@ func youDaoTranslate(searchWord string) (result *word, err error) {
 	requestUrl := fmt.Sprintf("http://fanyi.youdao.com/openapi.do?keyfrom=YouDaoCV&key=%s&type=data&doctype=json&version=1.2&q=%s", key, searchWord)
 	req, err := http.NewRequest(http.MethodGet, requestUrl, nil)
 
-
 	resp, err := httpClient.Do(req)
 	defer resp.Body.Close()
 	if err != nil {
@@ -235,8 +228,7 @@ func downloadMP3(name, url string) {
 
 	// 查看是否有存放语音的文件夹
 
-
-	f, err := os.OpenFile(fmt.Sprint(speechPath, "/", name, ".mp3"), os.O_RDWR | os.O_CREATE | os.O_TRUNC, 0666)
+	f, err := os.OpenFile(fmt.Sprint(speechPath, "/", name, ".mp3"), os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0666)
 	defer f.Close()
 	if err != nil {
 		logger.Fatal(err)
@@ -282,7 +274,7 @@ func queryWord(searchWord string) (result *word, err error) {
 // ———————————————————————————————————————————— MySQL -----------------------------------------------------
 
 func sqlAddWord(word *word) (err error) {
-	db := server.GetMySQLSession()
+	db := GetMySQLSession()
 	stmt, err := db.Prepare(`INSERT INTO notebook_word (word, translations, created_on, appear_time, last_appear) 
 				VALUES (?, ?, ?, ?, ?)`)
 	if err != nil {
@@ -300,7 +292,7 @@ func sqlAddWord(word *word) (err error) {
 
 func sqlGetWord(qWord string) (result *word, err error) {
 	result = new(word)
-	db := server.GetMySQLSession()
+	db := GetMySQLSession()
 	stmt, err := db.Prepare(`SELECT id, word, translations 
 							FROM notebook_word WHERE word = ?`)
 	row := stmt.QueryRow(qWord)
@@ -312,7 +304,7 @@ func sqlGetWord(qWord string) (result *word, err error) {
 }
 
 func sqlUpdateWord(id int64) (err error) {
-	db := server.GetMySQLSession()
+	db := GetMySQLSession()
 	stmt, err := db.Prepare(`UPDATE notebook_word
 				SET appear_time = appear_time + 1, 
 				last_appear = ?

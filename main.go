@@ -2,14 +2,13 @@ package main
 
 import (
 	"bufio"
-	"fmt"
-	"log"
 	"os"
 	"strings"
+	"github.com/HankWang95/word_translator/word"
 )
 
 func main() {
-	flagDict := NewLoaders()
+	flagDict := word.NewLoaders()
 	go scan(flagDict)
 	select {}
 }
@@ -22,8 +21,7 @@ func scan(flagDict map[string]*chan string) {
 		if flagChan, ok := flagDict[splitData[0]]; ok {
 			*flagChan <- strings.Join(splitData[1:], "")
 		} else {
-			fmt.Println("flag not exist, read help")
-			log.SetFlags(log.Ldate)
+			*flagDict["w"] <- splitData[0]
 		}
 	}
 }

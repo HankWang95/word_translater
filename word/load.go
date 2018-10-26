@@ -1,10 +1,8 @@
-package main
-
+package word
 
 import (
-"errors"
-"github.com/HankWang95/Kanna/services/notebook"
-"log"
+	"errors"
+	"log"
 )
 
 type Loader interface {
@@ -13,7 +11,7 @@ type Loader interface {
 
 func NewLoaders() (flagDict map[string]*chan string) {
 	loaders := make([]Loader, 0)
-	loaders = append(loaders, notebook.NewWordLoader())
+	loaders = append(loaders, NewWordLoader())
 	// todo 加入其他 loader
 	flagDict = loading(loaders)
 	return
@@ -46,4 +44,3 @@ func mergeMap(maps []map[string]*chan string) (mergedMap map[string]*chan string
 	}
 	return flagDict, nil
 }
-
