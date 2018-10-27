@@ -75,16 +75,15 @@ func init() {
 
 }
 
-func GetMySQLSession() dbs.DB {
+func getMySQLSession() dbs.DB {
 	return db
 }
 
-// ———————————————————————————————————————————— Loader -----------------------------------------------------
+// ———————————————————————————————————————————— Handler -----------------------------------------------------
 
 var queryWordChan = make(chan string, 10)
 var wordListChan = make(chan string, 10)
-
-type wordLoader struct{}
+var writer io.Writer
 
 func queryWordEnter(word string) {
 	w, err := queryWord(word)
@@ -95,20 +94,26 @@ func queryWordEnter(word string) {
 	}
 }
 
-func NewWordLoader() *wordLoader {
-	return new(wordLoader)
-}
-
-func (this *wordLoader) LoadingFlag() (flagDict map[string]*chan string) {
+func (this *wordHandler) RegisterFlag() (flagDict map[string]*chan string) {
 	flagDict = make(map[string]*chan string)
 	flagDict["w"] = &queryWordChan
 	flagDict["wl"] = &wordListChan
-	go flagHandler()
-	go dailyWordList()
+	go this.run()
+	go this.runDailyWork()
 	return
 }
 
-func flagHandler() {
+func (this *wordHandler) DemandWriter(w io.Writer)  {
+	writer = w
+}
+
+type wordHandler struct {}
+
+func NewWordHandler() *wordHandler {
+	return new(wordHandler)
+}
+
+func (this *wordHandler) run() {
 	for {
 		select {
 		case word := <-queryWordChan:
@@ -134,20 +139,20 @@ func (w *word) FormatTranslations() {
 	var fi interface{}
 	json.Unmarshal([]byte(w.Translations), &fi)
 	f := fi.(map[string]interface{})
-	fmt.Println("---- ", w.Word, " ----")
+	fmt.Fprintln(writer ,"---- ", w.Word, " ----")
 	if v, ok := f["translation"]; ok {
-		fmt.Println("基本翻译: ", v.([]interface{}))
+		fmt.Fprintln(writer ,"基本翻译: ", v.([]interface{}))
 	}
 	if v, ok := f["basic"]; ok {
 		basic := v.(map[string]interface{})
 		if v, ok := basic["us-phonetic"]; ok {
-			fmt.Println("美式发音: ", v.(string))
+			fmt.Fprintln(writer ,"美式发音: ", v.(string))
 		}
 		if v, ok := basic["uk-phonetic"]; ok {
-			fmt.Println("英式发音: ", v.(string))
+			fmt.Fprintln(writer ,"英式发音: ", v.(string))
 		}
 		if v, ok := basic["explains"]; ok {
-			fmt.Println("其他释义: ", v.([]interface{}))
+			fmt.Fprintln(writer ,"其他释义: ", v.([]interface{}))
 		}
 		if v, ok := basic["us-speech"]; ok {
 			f, err := os.Open(fmt.Sprint(speechPath+"/", w.Word, ".mp3"))
@@ -166,14 +171,14 @@ func (w *word) FormatWordList() {
 	var fi interface{}
 	json.Unmarshal([]byte(w.Translations), &fi)
 	f := fi.(map[string]interface{})
-	fmt.Print("---- ", w.Word, " -- ")
+	fmt.Fprint(writer ,"---- ", w.Word, " -- ")
 	if v, ok := f["translation"]; ok {
-		fmt.Println(v.([]interface{})[0], "----")
+		fmt.Fprintln(writer ,v.([]interface{})[0], "----")
 	}
 	if v, ok := f["basic"]; ok {
 		basic := v.(map[string]interface{})
 		if v, ok := basic["explains"]; ok {
-			fmt.Println("其他释义: ", v.([]interface{}))
+			fmt.Fprintln(writer ,"其他释义: ", v.([]interface{}))
 		}
 	}
 }
@@ -274,7 +279,7 @@ func queryWord(searchWord string) (result *word, err error) {
 // ———————————————————————————————————————————— MySQL -----------------------------------------------------
 
 func sqlAddWord(word *word) (err error) {
-	db := GetMySQLSession()
+	db := getMySQLSession()
 	stmt, err := db.Prepare(`INSERT INTO notebook_word (word, translations, created_on, appear_time, last_appear) 
 				VALUES (?, ?, ?, ?, ?)`)
 	if err != nil {
@@ -292,7 +297,7 @@ func sqlAddWord(word *word) (err error) {
 
 func sqlGetWord(qWord string) (result *word, err error) {
 	result = new(word)
-	db := GetMySQLSession()
+	db := getMySQLSession()
 	stmt, err := db.Prepare(`SELECT id, word, translations 
 							FROM notebook_word WHERE word = ?`)
 	row := stmt.QueryRow(qWord)
@@ -304,7 +309,7 @@ func sqlGetWord(qWord string) (result *word, err error) {
 }
 
 func sqlUpdateWord(id int64) (err error) {
-	db := GetMySQLSession()
+	db := getMySQLSession()
 	stmt, err := db.Prepare(`UPDATE notebook_word
 				SET appear_time = appear_time + 1, 
 				last_appear = ?

@@ -8,7 +8,11 @@ import (
 )
 
 func main() {
-	flagDict := word.NewLoaders()
+	// 多模块handler注册写在loader 中
+	handler := word.NewWordHandler()
+	handler.DemandWriter(os.Stdout)
+
+	flagDict := handler.RegisterFlag()
 	go scan(flagDict)
 	select {}
 }

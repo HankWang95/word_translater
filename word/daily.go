@@ -16,7 +16,7 @@ func wordListEnter(sn string) {
 	pushWordList(n)
 }
 
-func dailyWordList() {
+func (this *wordHandler) runDailyWork() {
 	c := cron.New()
 	c.AddFunc("0 0 19 * * *", dailyFunc)
 	c.Start()
@@ -31,15 +31,15 @@ func pushWordList(n int) {
 		return
 	}
 	for n, word := range wordList {
-		fmt.Print(n+1, " ")
+		fmt.Fprint(writer ,n+1, " ")
 		word.FormatWordList()
-		fmt.Println("--------------------------------------")
+		fmt.Fprintln(writer ,"--------------------------------------")
 	}
 }
 
 func sqlCreateWordList(n int) (wordList []*word, err error) {
 	wordList = make([]*word, 0, n)
-	db := GetMySQLSession()
+	db := getMySQLSession()
 	stmt, err := db.Prepare(`SELECT id, word, translations, appear_time, last_appear 
 				FROM notebook_word 
 				ORDER BY last_appear DESC 
