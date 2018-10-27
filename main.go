@@ -2,9 +2,9 @@ package main
 
 import (
 	"bufio"
+	"github.com/HankWang95/word_translator/word"
 	"os"
 	"strings"
-	"github.com/HankWang95/word_translator/word"
 )
 
 func main() {

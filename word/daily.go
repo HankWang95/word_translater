@@ -31,9 +31,9 @@ func pushWordList(n int) {
 		return
 	}
 	for n, word := range wordList {
-		fmt.Fprint(writer ,n+1, " ")
+		fmt.Fprint(writer, n+1, " ")
 		word.FormatWordList()
-		fmt.Fprintln(writer ,"--------------------------------------")
+		fmt.Fprintln(writer, "--------------------------------------")
 	}
 }
 

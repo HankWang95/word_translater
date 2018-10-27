@@ -103,11 +103,11 @@ func (this *wordHandler) RegisterFlag() (flagDict map[string]*chan string) {
 	return
 }
 
-func (this *wordHandler) DemandWriter(w io.Writer)  {
+func (this *wordHandler) DemandWriter(w io.Writer) {
 	writer = w
 }
 
-type wordHandler struct {}
+type wordHandler struct{}
 
 func NewWordHandler() *wordHandler {
 	return new(wordHandler)
@@ -139,20 +139,20 @@ func (w *word) FormatTranslations() {
 	var fi interface{}
 	json.Unmarshal([]byte(w.Translations), &fi)
 	f := fi.(map[string]interface{})
-	fmt.Fprintln(writer ,"---- ", w.Word, " ----")
+	fmt.Fprintln(writer, "---- ", w.Word, " ----")
 	if v, ok := f["translation"]; ok {
-		fmt.Fprintln(writer ,"基本翻译: ", v.([]interface{}))
+		fmt.Fprintln(writer, "基本翻译: ", v.([]interface{}))
 	}
 	if v, ok := f["basic"]; ok {
 		basic := v.(map[string]interface{})
 		if v, ok := basic["us-phonetic"]; ok {
-			fmt.Fprintln(writer ,"美式发音: ", v.(string))
+			fmt.Fprintln(writer, "美式发音: ", v.(string))
 		}
 		if v, ok := basic["uk-phonetic"]; ok {
-			fmt.Fprintln(writer ,"英式发音: ", v.(string))
+			fmt.Fprintln(writer, "英式发音: ", v.(string))
 		}
 		if v, ok := basic["explains"]; ok {
-			fmt.Fprintln(writer ,"其他释义: ", v.([]interface{}))
+			fmt.Fprintln(writer, "其他释义: ", v.([]interface{}))
 		}
 		if v, ok := basic["us-speech"]; ok {
 			f, err := os.Open(fmt.Sprint(speechPath+"/", w.Word, ".mp3"))
@@ -171,14 +171,14 @@ func (w *word) FormatWordList() {
 	var fi interface{}
 	json.Unmarshal([]byte(w.Translations), &fi)
 	f := fi.(map[string]interface{})
-	fmt.Fprint(writer ,"---- ", w.Word, " -- ")
+	fmt.Fprint(writer, "---- ", w.Word, " -- ")
 	if v, ok := f["translation"]; ok {
-		fmt.Fprintln(writer ,v.([]interface{})[0], "----")
+		fmt.Fprintln(writer, v.([]interface{})[0], "----")
 	}
 	if v, ok := f["basic"]; ok {
 		basic := v.(map[string]interface{})
 		if v, ok := basic["explains"]; ok {
-			fmt.Fprintln(writer ,"其他释义: ", v.([]interface{}))
+			fmt.Fprintln(writer, "其他释义: ", v.([]interface{}))
 		}
 	}
 }
