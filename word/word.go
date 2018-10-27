@@ -28,7 +28,7 @@ var (
 	logger      *log.Logger
 	key         string
 	db          dbs.DB
-	projectPath = path.Join(os.Getenv("HOME"), "Documents", "Kanna")
+	projectPath = path.Join(os.Getenv("HOME"), "MyProject", "Kanna")
 	configPath  = path.Join(projectPath, "config")
 	speechPath  = path.Join(projectPath, "speech")
 )
