@@ -185,7 +185,7 @@ func (w *word) FormatWordList() {
 
 func createHTTPClient() *http.Client {
 	client := &http.Client{
-		Timeout: time.Second * 3,
+		Timeout: time.Second * 5,
 		Transport: &http.Transport{
 			Proxy: http.ProxyFromEnvironment,
 			DialContext: (&net.Dialer{
