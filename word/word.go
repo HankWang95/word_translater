@@ -25,31 +25,40 @@ const (
 
 var (
 	httpClient  *http.Client
-	logger      *log.Logger
+	Logger      *log.Logger
 	key         string
 	db          dbs.DB
-	projectPath = path.Join(os.Getenv("HOME"), "MyProject", "Kanna")
+	projectPath = path.Join(os.Getenv("HOME"), "Documents", "Kanna")
 	configPath  = path.Join(projectPath, "config")
 	speechPath  = path.Join(projectPath, "speech")
 )
 
 func init() {
+	// 初始化log文件
+	logFile, err := os.OpenFile(path.Join(projectPath, "kanna.log"), os.O_WRONLY|os.O_CREATE, 0666)
+	if err != nil {
+		Logger.Fatal(err)
+	}
+	Logger = log.New(logFile, "[word_translator] ", log.Ltime|log.Ldate|log.Lshortfile)
+
+	// 读取config
+	var config = ini4go.New(false)
+	config.SetUniqueOption(true)
+	config.Load(configPath)
+
 	// 生成文件及目录
-	_, err := os.Stat(projectPath)
+	_, err = os.Stat(projectPath)
 	if err != nil {
 		err := os.Mkdir(projectPath, os.ModeDir|0777)
 		if err != nil {
-			logger.Fatal(err)
+			Logger.Fatal(err, projectPath)
 		}
 		_, err = os.Stat(speechPath)
 		if err != nil {
 			os.Mkdir(speechPath, os.ModeDir|0777)
 		}
 	}
-	// 读取config
-	var config = ini4go.New(false)
-	config.SetUniqueOption(true)
-	config.Load(configPath)
+
 
 	// 读取key
 	key = config.GetValue("youdao", "key")
@@ -62,13 +71,6 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
-
-	// 初始化log文件
-	logFile, err := os.OpenFile(path.Join(projectPath, "kanna.log"), os.O_WRONLY|os.O_CREATE, 0666)
-	if err != nil {
-		logger.Fatal(err)
-	}
-	logger = log.New(logFile, "[word_translator] ", log.Ltime|log.Ldate|log.Lshortfile)
 
 	// 初始化client
 	httpClient = createHTTPClient()
@@ -88,7 +90,7 @@ var writer io.Writer
 func queryWordEnter(word string) {
 	w, err := queryWord(word)
 	if err != nil {
-		logger.Println(err)
+		Logger.Println(err)
 	} else {
 		w.FormatTranslations()
 	}
@@ -99,7 +101,6 @@ func (this *wordHandler) RegisterFlag() (flagDict map[string]*chan string) {
 	flagDict["w"] = &queryWordChan
 	flagDict["wl"] = &wordListChan
 	go this.run()
-	go this.runDailyWork()
 	return
 }
 
@@ -167,7 +168,7 @@ func (w *word) FormatTranslations() {
 	}
 }
 
-func (w *word) FormatWordList() {
+func (w *word) FormatWordList(writer io.Writer) {
 	var fi interface{}
 	json.Unmarshal([]byte(w.Translations), &fi)
 	f := fi.(map[string]interface{})
@@ -185,11 +186,10 @@ func (w *word) FormatWordList() {
 
 func createHTTPClient() *http.Client {
 	client := &http.Client{
-		Timeout: time.Second * 3,
+		Timeout: time.Second * 10,
 		Transport: &http.Transport{
 			Proxy: http.ProxyFromEnvironment,
 			DialContext: (&net.Dialer{
-				Timeout:   30 * time.Second,
 				KeepAlive: 30 * time.Second,
 			}).DialContext,
 			MaxIdleConns:        MaxIdleConns,
@@ -207,11 +207,11 @@ func youDaoTranslate(searchWord string) (result *word, err error) {
 	resp, err := httpClient.Do(req)
 	defer resp.Body.Close()
 	if err != nil {
-		logger.Println("获取api出错", err)
+		Logger.Println("获取api出错", err)
 	}
 
 	if resp.Status != "200 OK" {
-		logger.Println("调用翻译api发生错误")
+		Logger.Println("调用翻译api发生错误")
 		return nil, err
 	}
 
@@ -227,7 +227,7 @@ func youDaoTranslate(searchWord string) (result *word, err error) {
 func downloadMP3(name, url string) {
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
-		logger.Println(" download MP3 err :", err)
+		Logger.Println(" download MP3 err :", err)
 		return
 	}
 
@@ -236,12 +236,12 @@ func downloadMP3(name, url string) {
 	f, err := os.OpenFile(fmt.Sprint(speechPath, "/", name, ".mp3"), os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0666)
 	defer f.Close()
 	if err != nil {
-		logger.Fatal(err)
+		Logger.Fatal(err)
 		return
 	}
 	resp, err := httpClient.Do(req)
 	if err != nil {
-		logger.Println(" download MP3 err :", err)
+		Logger.Println(" download MP3 err :", err)
 		return
 	}
 	io.Copy(f, resp.Body)
@@ -271,7 +271,7 @@ func queryWord(searchWord string) (result *word, err error) {
 	}
 	err = sqlAddWord(result)
 	if err != nil {
-		logger.Println(err)
+		Logger.Println(err)
 	}
 	return result, nil
 }
@@ -283,13 +283,13 @@ func sqlAddWord(word *word) (err error) {
 	stmt, err := db.Prepare(`INSERT INTO notebook_word (word, translations, created_on, appear_time, last_appear) 
 				VALUES (?, ?, ?, ?, ?)`)
 	if err != nil {
-		logger.Println(err)
+		Logger.Println(err)
 		return err
 	}
 	now := time.Now()
 	_, err = stmt.Exec(word.Word, word.Translations, now, 1, now)
 	if err != nil {
-		logger.Println(err)
+		Logger.Println(err)
 		return err
 	}
 	return nil
@@ -316,7 +316,7 @@ func sqlUpdateWord(id int64) (err error) {
 				WHERE id = ?`)
 	_, err = stmt.Exec(time.Now(), id)
 	if err != nil {
-		logger.Println(err)
+		Logger.Println(err)
 		return err
 	}
 	return

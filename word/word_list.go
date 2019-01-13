@@ -2,7 +2,6 @@ package word
 
 import (
 	"fmt"
-	"github.com/robfig/cron"
 	"strconv"
 )
 
@@ -16,28 +15,21 @@ func wordListEnter(sn string) {
 	pushWordList(n)
 }
 
-func (this *wordHandler) runDailyWork() {
-	c := cron.New()
-	c.AddFunc("0 0 19 * * *", dailyFunc)
-	c.Start()
-}
-
-func dailyFunc() { pushWordList(10) }
 
 // 生成单词列表
 func pushWordList(n int) {
-	wordList, err := sqlCreateWordList(n)
+	wordList, err := SqlCreateWordList(n)
 	if err != nil {
 		return
 	}
 	for n, word := range wordList {
 		fmt.Fprint(writer, n+1, " ")
-		word.FormatWordList()
+		word.FormatWordList(writer)
 		fmt.Fprintln(writer, "--------------------------------------")
 	}
 }
 
-func sqlCreateWordList(n int) (wordList []*word, err error) {
+func SqlCreateWordList(n int) (wordList []*word, err error) {
 	wordList = make([]*word, 0, n)
 	db := getMySQLSession()
 	stmt, err := db.Prepare(`SELECT id, word, translations, appear_time, last_appear 
@@ -49,13 +41,13 @@ func sqlCreateWordList(n int) (wordList []*word, err error) {
 		var w = new(word)
 		err = rows.Scan(&w.Id, &w.Word, &w.Translations, &w.AppearTime, &w.LastAppear)
 		if err != nil {
-			logger.Println(err)
+			Logger.Println(err)
 			continue
 		}
 		wordList = append(wordList, w)
 	}
 	if rows.Err() != nil {
-		logger.Println(rows.Err())
+		Logger.Println(rows.Err())
 	}
 	rows.Close()
 	return wordList, nil
