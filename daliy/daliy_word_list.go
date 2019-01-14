@@ -46,11 +46,11 @@ func dailyFunc()  {
 		word.FormatWordList(file)
 	}
 
-	// 写入文件
-
 }
 
 func main() {
 	runDailyWork()
-	dailyFunc()
+	select {
+
+	}
 }
