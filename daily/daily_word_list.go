@@ -19,7 +19,7 @@ var (
 
 func runDailyWork() {
 	c := cron.New()
-	c.AddFunc("0 0 19 * * *", dailyFunc)
+	c.AddFunc("0 0 10 * * *", dailyFunc)
 	c.Start()
 }
 

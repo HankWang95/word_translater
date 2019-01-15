@@ -89,6 +89,9 @@ var wordListChan = make(chan string, 10)
 var writer io.Writer
 
 func queryWordEnter(word string) {
+	if word == "" {
+		return
+	}
 	w, err := queryWord(word)
 	if err != nil {
 		Logger.Println(err)
