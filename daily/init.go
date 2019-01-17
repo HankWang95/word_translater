@@ -26,7 +26,7 @@ var (
 
 func init() {
 	// 初始化log文件
-	logFile, err := os.OpenFile(path.Join(projectPath, "kanna.log"), os.O_WRONLY|os.O_CREATE, 0666)
+	logFile, err := os.OpenFile(path.Join(projectPath, "kanna.log"), os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
 	if err != nil {
 		panic(err)
 	}

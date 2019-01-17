@@ -60,7 +60,6 @@ func init() {
 		}
 	}
 
-
 	// 读取key
 	key = config.GetValue("youdao", "key")
 
@@ -138,6 +137,7 @@ type word struct {
 	CreatedOn    *time.Time `json:"created_on"        sql:"created_on"`
 	AppearTime   int        `json:"appear_time"       sql:"appear_time"`
 	LastAppear   *time.Time `json:"last_appear"       sql:"last_appear"`
+	EnglishTrans string     `json:"english_trans"     sql:"english_trans"`
 }
 
 func (w *word) FormatTranslations() {
@@ -147,6 +147,9 @@ func (w *word) FormatTranslations() {
 	fmt.Fprintln(writer, "---- ", w.Word, " ----")
 	if v, ok := f["translation"]; ok {
 		fmt.Fprintln(writer, "基本翻译: ", v.([]interface{}))
+	}
+	if w.EnglishTrans != "" {
+		fmt.Fprintln(writer, "英英: ", w.EnglishTrans)
 	}
 	if v, ok := f["basic"]; ok {
 		basic := v.(map[string]interface{})
@@ -162,8 +165,7 @@ func (w *word) FormatTranslations() {
 		if v, ok := basic["us-speech"]; ok {
 			f, err := os.Open(fmt.Sprint(speechPath+"/", w.Word, ".mp3"))
 			if err == nil {
-				playMP3(f.Name())
-				return
+				go playMP3(f.Name())
 			}
 			f.Close()
 			usURL := fmt.Sprint(v.(string))
@@ -270,6 +272,7 @@ func queryWord(searchWord string) (result *word, err error) {
 	}
 
 	result, err = youDaoTranslate(searchWord)
+	result.EnglishTrans = sqlGetE2ETranslation(searchWord)
 	if err != nil {
 		return nil, err
 	}
@@ -280,7 +283,6 @@ func queryWord(searchWord string) (result *word, err error) {
 	return result, nil
 }
 
-
 // ---------------------- word list service --------------------------
 
 func wordListEnter(sn string) {
@@ -290,7 +292,6 @@ func wordListEnter(sn string) {
 	}
 	pushWordList(n)
 }
-
 
 // 生成单词列表
 func pushWordList(n int) {
@@ -304,7 +305,6 @@ func pushWordList(n int) {
 		fmt.Fprintln(writer, "--------------------------------------")
 	}
 }
-
 
 // ———————————————————————————————————————————— MySQL -----------------------------------------------------
 
@@ -328,14 +328,26 @@ func sqlAddWord(word *word) (err error) {
 func sqlGetWord(qWord string) (result *word, err error) {
 	result = new(word)
 	db := getMySQLSession()
-	stmt, err := db.Prepare(`SELECT id, word, translations 
-							FROM notebook_word WHERE word = ?`)
+	stmt, err := db.Prepare(`SELECT nw.id, nw.word, nw.translations, ee.translation AS english_trans
+							FROM notebook_word AS nw Left Join english_to_english_dictionary AS ee ON ee.word = nw.word WHERE nw.word = ?`)
 	row := stmt.QueryRow(qWord)
-	err = row.Scan(&result.Id, &result.Word, &result.Translations)
+	err = row.Scan(&result.Id, &result.Word, &result.Translations, &result.EnglishTrans)
 	if err != nil {
 		return nil, err
 	}
 	return result, nil
+}
+
+func sqlGetE2ETranslation(word string) (result string) {
+	db := getMySQLSession()
+	stmt, err := db.Prepare(`SELECT  ee.translation AS english_trans 
+							FROM  english_to_english_dictionary AS ee where ee.word = ?`)
+	row := stmt.QueryRow(word)
+	err = row.Scan(&result)
+	if err != nil {
+		return ""
+	}
+	return result
 }
 
 func sqlUpdateWord(id int64) (err error) {

@@ -24,6 +24,7 @@ func runDailyWork() {
 }
 
 func dailyFunc() {
+	Logger.Println("开始每日任务")
 	// 生成单词表
 	wordList, err := SqlCreateWordList(30)
 	if err != nil {
