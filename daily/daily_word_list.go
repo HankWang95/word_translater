@@ -19,8 +19,10 @@ var (
 
 func runDailyWork() {
 	c := cron.New()
-	c.AddFunc("0 0 10 * * *", dailyFunc)
+	err := c.AddFunc("0 0 10 * * *", dailyFunc)
+	Logger.Println(err)
 	c.Start()
+	dailyFunc()
 }
 
 func dailyFunc() {
@@ -41,7 +43,7 @@ func dailyFunc() {
 	}
 
 	filePath := path.Join(dailyDir, time.Now().Format("2006-01-02"))
-	file, err := os.OpenFile(filePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	file, err := os.OpenFile(filePath, os.O_CREATE|os.O_WRONLY, 0666)
 	if err != nil {
 		Logger.Fatalln(err)
 	}
@@ -78,7 +80,6 @@ func (w *wordStruct) FormatWordList(writer io.Writer) {
 		}
 	}
 }
-
 
 func SqlCreateWordList(n int) (wordList []*wordStruct, err error) {
 	wordList = make([]*wordStruct, 0, n)

@@ -10,27 +10,25 @@ import (
 
 func main() {
 	runDailyWork()
-	select {
-
-	}
+	select {}
 }
-
 
 var (
 	Logger      *log.Logger
 	db          dbs.DB
 	projectPath = path.Join(os.Getenv("HOME"), "Documents", "Kanna")
 	configPath  = path.Join(projectPath, "config")
+	dailyPath   = path.Join(projectPath, "daily")
 	speechPath  = path.Join(projectPath, "speech")
 )
 
 func init() {
 	// 初始化log文件
-	logFile, err := os.OpenFile(path.Join(projectPath, "kanna.log"), os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
+	logFile, err := os.OpenFile(path.Join(dailyPath, "daily.log"), os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
 	if err != nil {
 		panic(err)
 	}
-	Logger = log.New(logFile, "[word_translator] ", log.Ltime|log.Ldate|log.Lshortfile)
+	Logger = log.New(logFile, "[daily_word_list] ", log.Ltime|log.Ldate|log.Lshortfile)
 
 	// 读取config
 	var config = ini4go.New(false)
